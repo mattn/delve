@@ -1,6 +1,11 @@
 package proc
 
-// #include <windows.h>
+/*
+#include <windows.h>
+BOOL _ReadProcessMemory(HANDLE hProcess, uintptr_t lpBaseAddress, LPVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesRead) {
+  return ReadProcessMemory(hProcess, (LPCVOID*) lpBaseAddress, lpBuffer, nSize, lpNumberOfBytesRead);
+}
+*/
 import "C"
 import (
 	"fmt"
@@ -136,7 +141,7 @@ func (t *Thread) stopped() bool {
 
 func (t *Thread) writeMemory(addr uintptr, data []byte) (int, error) {
 	var (
-		vmData = C.LPCVOID(unsafe.Pointer(&data[0]))
+		vmData = C.LPCVOID(uintptr(unsafe.Pointer(&data[0])))
 		vmAddr = C.LPVOID(addr)
 		length = C.SIZE_T(len(data))
 		count  C.SIZE_T
@@ -155,11 +160,11 @@ func (t *Thread) readMemory(addr uintptr, size int) ([]byte, error) {
 	var (
 		buf    = make([]byte, size)
 		vmData = C.LPVOID(unsafe.Pointer(&buf[0]))
-		vmAddr = C.LPCVOID(addr)
+		vmAddr = C.uintptr_t(addr)
 		length = C.SIZE_T(size)
 		count  C.SIZE_T
 	)
-	ret := C.ReadProcessMemory(C.HANDLE(t.dbp.os.hProcess), vmAddr, vmData, length, &count)
+	ret := C._ReadProcessMemory(C.HANDLE(t.dbp.os.hProcess), vmAddr, vmData, length, &count)
 	if ret == C.FALSE {
 		return nil, fmt.Errorf("could not read memory")
 	}
